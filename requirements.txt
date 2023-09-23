@@ -102,6 +102,7 @@ stack-data==0.6.2
 sympy==1.11.1
 tabulate==0.9.0
 thop==0.1.1.post2209072238
+-f https://download.pytorch.org/whl/torch_stable.html
 torch==2.0.1+cpu
 torchaudio==2.0.2+cpu
 torchvision==0.15.2+cpu

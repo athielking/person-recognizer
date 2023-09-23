@@ -5,6 +5,7 @@ import numpy as np
 import azure.functions as func
 import json
 from urllib.request import urlopen
+from urllib.error import URLError
 
 app = func.FunctionApp()
 
@@ -59,23 +60,26 @@ def detect_from_url(req: func.HttpRequest):
     data["fileName"] = image_url
     data["results"] = []
 
-    with urlopen(image_url) as input_img:
-        image_bytes = np.asarray(bytearray(input_img.read()), dtype="uint8")
-        image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
+    try:
+        with urlopen(image_url) as input_img:
+            image_bytes = np.asarray(bytearray(input_img.read()), dtype="uint8")
+            image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
 
-        with torch.no_grad():
-            results = model(image)
-            df = results.pandas().xyxy[0]            
-            df = df.loc[df['class']==0]
-            
-            for tup in df[['name', 'confidence']].itertuples():                
-                obj = {}
-                obj['detection_id'] = tup[0]
-                obj["class"] = tup.name
-                obj["confidence"] = tup.confidence
-                data['results'].append(obj)
+            with torch.no_grad():
+                results = model(image)
+                df = results.pandas().xyxy[0]            
+                df = df.loc[df['class']==0]
+                
+                for tup in df[['name', 'confidence']].itertuples():                
+                    obj = {}
+                    obj['detection_id'] = tup[0]
+                    obj["class"] = tup.name
+                    obj["confidence"] = tup.confidence
+                    data['results'].append(obj)
 
-        output.append(data)
-    print(output)
-    return func.HttpResponse(json.dumps(output), mimetype="application/json")                
-    
+            output.append(data)
+        print(output)
+        return func.HttpResponse(json.dumps(output), mimetype="application/json")                
+    except URLError as ex:
+        data["error"] = "Failed to open url with status code %s" % ex.code
+        return func.HttpResponse(json.dumps(data))
